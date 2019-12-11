@@ -59,13 +59,13 @@ void EventImpl::signal() {
     std::unordered_map<Coroutine*, timer_id_t> co_wait;
     {
         ::MutexGuard g(_mtx);
-        _co_wait.swap(co_wait);
+        _co_wait.swap(co_wait); // _co_wait表示在this Event上等待的协程
     }
 
     for (auto it = co_wait.begin(); it != co_wait.end(); ++it) {
         Coroutine* co = it->first;
-        if (atomic_compare_swap(&co->ev, ev_wait, ev_ready) == ev_wait) {
-            co->s->add_task(co, it->second);
+        if (atomic_compare_swap(&co->ev, ev_wait, ev_ready) == ev_wait) { // 如果协程之前的状态是wait，则变成ready，并且进入这里。
+            co->s->add_task(co, it->second); // 在Schedule._co中增加一项co
         }
     }
 }

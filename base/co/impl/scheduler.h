@@ -216,7 +216,7 @@ class Scheduler {
     Epoll _epoll;
 
     std::vector<Coroutine*> _co_pool; // coroutine pool
-    std::vector<int> _co_ids;
+    std::vector<int> _co_ids; // 空协程ID
 
     ::Mutex _task_mtx;
     std::vector<Closure*> _task_cb;   // newly added tasks
@@ -224,10 +224,11 @@ class Scheduler {
 
     ::Mutex _co_mtx;
     std::unordered_map<Coroutine*, timer_id_t> _co; // coroutines to be waken up
+    // timer_id_t是指向_timed_wait中元素的迭代器
 
-    std::multimap<int64, Coroutine*> _timed_wait;   // <time, co>
-    std::multimap<int64, Coroutine*>::iterator _it;
-    uint32 _wait_ms;
+    std::multimap<int64, Coroutine*> _timed_wait;   // <time, co> // 其中，time表示协程co应该被调度的时间点（进行与now()对比）
+    std::multimap<int64, Coroutine*>::iterator _it; // 表示接下来要调度的
+    uint32 _wait_ms; // 表示再过多少毫秒，要对_tiemd_wait中的协程进行一次调度
 
     SyncEvent _ev;
     bool _stop;
@@ -236,6 +237,8 @@ class Scheduler {
 
 inline Coroutine* Scheduler::new_coroutine(Closure* cb) {
     if (!_co_ids.empty()) {
+        // ～～如果_co_pool不是空的～～
+        // 注意：其实此处的意思是仅仅是_co_ids为空，_co_ids和_co_pool不同步
         Coroutine* co = _co_pool[_co_ids.back()];
         co->cb = cb;
         co->ctx = 0;
@@ -243,7 +246,9 @@ inline Coroutine* Scheduler::new_coroutine(Closure* cb) {
         _co_ids.pop_back();
         return co;
     } else {
-        Coroutine* co = new Coroutine((int)_co_pool.size(), cb);
+        // ～～如果_co_pool是空的～～（第一次函数来到这里）
+        Coroutine* co = new Coroutine((int)_co_pool.size(), cb); // 第一次调用这个，_co_pool.size == 1(因为有_main_co)
+        // 新Coroutine的id会在recycle中被蓄积到_co_ids中
         _co_pool.push_back(co);
         return co;
     }
@@ -278,8 +283,11 @@ class SchedulerMgr {
     SchedulerMgr();
     ~SchedulerMgr();
 
+    // 轮流返回类所拥有的Schedule
     Scheduler* operator->() {
         if (_n != (uint32)-1) return _scheds[atomic_inc(&_index) & _n];
+        // _n != uint(-1),则_n = 0,也就是说返回那个唯一的Schedule
+        // 
         return _scheds[atomic_inc(&_index) % _scheds.size()];
     }
 
@@ -289,8 +297,8 @@ class SchedulerMgr {
 
   private:
     std::vector<Scheduler*> _scheds;
-    uint32 _index;
-    uint32 _n;
+    uint32 _index;  // ScheduleMgr使用此项来决定operate->返回哪个Schedule,初始值-1,每次使用前都++_index
+    uint32 _n;      // 如果CPU是单核,此项为0,否则此项为(uint)-1
 };
 
 #ifdef _WIN32
@@ -429,8 +437,8 @@ class EvWrite {
     }
 
   private:
-    bool _has_ev;
-    sock_t _fd;
+    bool _has_ev;   // 表示事件是否向Scheduler._epoll注册过了
+    sock_t _fd;     // 监测的fd
     timer_id_t _id;
 };
 

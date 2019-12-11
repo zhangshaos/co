@@ -155,7 +155,7 @@ class Epoll {
     int _efd;
     int _fds[2]; // pipe fd
     epoll_event _ev[1024];
-    std::unordered_map<int, uint64> _ev_map;
+    std::unordered_map<int, uint64> _ev_map; // <fd, epoll_event.data.u64> 其中u64的高32位表示“此fd上注册读事件的Coroutine ID”，低32位表示“此fd上注册写事件的Coroutine ID”
     bool _signaled;
 };
 

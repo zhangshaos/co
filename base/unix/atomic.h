@@ -80,6 +80,7 @@ inline T atomic_swap(T* p, V v) {
     return __atomic_exchange_n(p, v, __ATOMIC_SEQ_CST);
 }
 
+// v = p; if (p == o) { p = v; } return v;
 template <typename T, typename O, typename V>
 inline T atomic_compare_swap(T* p, O o, V v) {
     T x = (T) o;

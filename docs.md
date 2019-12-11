@@ -9,8 +9,8 @@ idealvin@qq.com
 </center>
 <br />
 </font>
-  
-  
+
+
 [CO](https://github.com/idealvin/co/) 是一个优雅、高效的 C++ 基础库，支持 Linux, Windows 与 Mac 平台。本文档将介绍 CO 的功能组件及使用方法。
 
 ## 1. 概览
@@ -755,6 +755,7 @@ void close();
 ```
 
 `log::init()` 需要在 `main` 函数开头调用一次。由于 log 库依赖于 flag 库，所以 main 函数一般得像下面这样写：
+
 ```cpp
 #include "base/flag.h"
 #include "base/log.h"
@@ -1215,7 +1216,7 @@ go(std::bind(&T::f, p, 7));  // void T::f(int);  T* p;
 
 ### 15.3 协程的调度控制
 
-协程的调度工作由调度线程自动完成，用户不需要关心。具体来说，调度线程做了下面几件事:
+的。但从用户的角度看，逻辑上可以认为 go() 创建了协程，并分配到指定的调度线程中，等待被执行。协程的调度工作由调度线程自动完成，用户不需要关心。具体来说，调度线程做了下面几件事:
 
 - 创建并启动协程.
 - 阻塞时挂起协程.
@@ -1247,7 +1248,7 @@ int main(int argc, char** argv) {
     go(f);          // 启动协程
     sleep::sec(8);  // 防止主线程立即退出
     co::stop();     // 退出所有调度线程
-    return 0;
+    return 0;塞时挂起协程.
 }
 ```
 
@@ -2151,7 +2152,7 @@ fs::mkdir("a/b", true);     // mkdir -p a/b
 
 fs::remove("x/x.txt");      // rm x/x.txt
 fs::remove("a/b");          // rmdir a/b   删除空目录
-fs::reomve("a/b", true);    // rm -rf a/b     
+fs::remove("a/b", true);    // rm -rf a/b     
 
 fs::rename("a/b", "a/c");   // 重命名
 fs::symlink("/usr", "x");   // 软链接 x -> /usr，windows 需要 admin 权限

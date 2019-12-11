@@ -78,11 +78,12 @@ Epoll::~Epoll() {
 
 bool Epoll::add_ev_read(int fd, int u) {
     auto& x = _ev_map[fd];
-    if (x >> 32) return true; // already exists
+    if (x >> 32) return true; // already exists // 如果u64的高32位表示是否注册读事件
 
     epoll_event event;
+    // 高32位是0，低32位表示是否检测写事件！
     event.events = x ? (EPOLLIN | EPOLLOUT | EPOLLET) : (EPOLLIN | EPOLLET);
-    event.data.u64 = ((uint64)u << 32) | x;
+    event.data.u64 = ((uint64)u << 32) | x; // 高32位变成Coroutine ID，低32位不变
 
     if (epoll_ctl(_efd, EPOLL_CTL_ADD, fd, &event) == 0) {
         x = event.data.u64;
@@ -95,11 +96,11 @@ bool Epoll::add_ev_read(int fd, int u) {
 
 bool Epoll::add_ev_write(int fd, int u) {
     auto& x = _ev_map[fd];
-    if ((uint32)x) return true; // already exists
+    if ((uint32)x) return true; // already exists // 低32位貌似表示是否已经注册写事件
 
     epoll_event event;
     event.events = x ? (EPOLLIN | EPOLLOUT | EPOLLET) : (EPOLLOUT | EPOLLET);
-    event.data.u64 = x | u;
+    event.data.u64 = x | u; // 高32位不变，低32位编程Coroutine ID
 
     if (epoll_ctl(_efd, EPOLL_CTL_ADD, fd, &event) == 0) {
         x = event.data.u64;
@@ -115,9 +116,9 @@ void Epoll::del_ev_read(int fd) {
     if (it == _ev_map.end() || !(it->second >> 32)) return;
 
     int r;
-    if (!(uint32)it->second) {
-        _ev_map.erase(it);
-        r = epoll_ctl(_efd, EPOLL_CTL_DEL, fd, (epoll_event*)8);
+    if (!(uint32)it->second) { // 低32位没有注册写事件
+        _ev_map.erase(it);  // 此时只注册了一个读事件，可以直接删除
+        r = epoll_ctl(_efd, EPOLL_CTL_DEL, fd, (epoll_event*)8); // epoll_ctl删除时，会直接忽视最后一个参数
     } else {
         it->second = (uint32)it->second;
         epoll_event event;
@@ -138,7 +139,7 @@ void Epoll::del_ev_write(int fd) {
     int r;
     if (!(it->second >> 32)) {
         _ev_map.erase(it);
-        r = epoll_ctl(_efd, EPOLL_CTL_DEL, fd, (epoll_event*)8);
+        r = epoll_ctl(_efd, EPOLL_CTL_DEL, fd, (epoll_event*)8); // epoll_ctl删除时，直接忽视最后一个参数
     } else {
         it->second &= ((uint64)-1 << 32);
         epoll_event event;

@@ -43,7 +43,7 @@ typedef void* tb_context_t;
  */
 typedef struct __tb_context_from_t {
     tb_context_t ctx;
-    const void* priv;
+    const void* priv;   // 通常是调用者协程
 } tb_context_from_t;
 
 /*! the context entry function type
